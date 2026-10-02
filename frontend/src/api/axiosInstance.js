@@ -31,7 +31,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refreshToken');
       if (!refreshToken) {
         localStorage.clear();
-        window.location.href = '/login';
+        window.location.href = `${import.meta.env.BASE_URL}login`;
         return Promise.reject(error);
       }
 
@@ -60,7 +60,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch {
         localStorage.clear();
-        window.location.href = '/login';
+        window.location.href = `${import.meta.env.BASE_URL}login`;
         return Promise.reject(error);
       } finally {
         isRefreshing = false;

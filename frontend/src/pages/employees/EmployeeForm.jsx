@@ -13,7 +13,7 @@ import * as yup from 'yup';
 import toast from 'react-hot-toast';
 import { employeeApi, departmentApi, designationApi } from '../../api/index';
 import PageHeader from '../../components/common/PageHeader';
-import { BLOOD_GROUPS, GENDER_OPTIONS, EMPLOYMENT_TYPES } from '../../utils/helpers';
+import { BLOOD_GROUPS, GENDER_OPTIONS, EMPLOYMENT_TYPES, getApiUrl } from '../../utils/helpers';
 
 const schema = yup.object({
   firstName: yup.string().min(2).max(50).required('First name is required'),
@@ -93,7 +93,7 @@ const EmployeeForm = () => {
         ifscCode: emp.ifscCode || '', panNumber: emp.panNumber || '',
         aadhaarNumber: emp.aadhaarNumber || '', status: emp.status || 'active',
       });
-      if (emp.photo) setPhotoPreview(`http://localhost:5000/uploads/photos/${emp.photo}`);
+      if (emp.photo) setPhotoPreview(getApiUrl(`uploads/photos/${emp.photo}`));
     }).catch(() => {}).finally(() => setFetchLoading(false));
   }, [id, isEdit, reset]);
 

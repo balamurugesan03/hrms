@@ -41,7 +41,7 @@ const Loader = () => (
 
 const App = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <ThemeProvider>
         <AuthProvider>
           <Toaster
