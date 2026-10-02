@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-require('dotenv').config({ path: '../../.env' });
+require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 
 const User = require('../models/User');
 const Department = require('../models/Department');
