@@ -9,5 +9,7 @@ router.get('/attendance-trend', ctrl.getAttendanceTrend);
 router.get('/employee-growth', ctrl.getEmployeeGrowth);
 router.get('/leave-analytics', ctrl.getLeaveAnalytics);
 router.get('/payroll-analytics', ctrl.getPayrollAnalytics);
+router.get('/celebrations', ctrl.getCelebrations);
+router.get('/my-summary', ctrl.getMySummary);
 
 module.exports = router;

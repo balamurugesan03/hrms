@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   AppBar, Toolbar, IconButton, Typography, Box, Avatar, Menu, MenuItem,
-  ListItemIcon, ListItemText, Divider, Tooltip, Badge, Chip,
+  ListItemIcon, ListItemText, Divider, Tooltip, Chip,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -9,8 +9,8 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LockIcon from '@mui/icons-material/Lock';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import { useNavigate, useLocation } from 'react-router-dom';
+import NotificationBell from './NotificationBell';
 import { useAuth } from '../../contexts/AuthContext';
 import { useThemeMode } from '../../contexts/ThemeContext';
 import { getInitials } from '../../utils/helpers';
@@ -35,6 +35,7 @@ const getBreadcrumb = (pathname) => {
     '/reports': 'Reports',
     '/profile': 'My Profile',
     '/settings': 'Settings',
+    '/announcements': 'Announcements',
   };
   return map[pathname] || 'HRMS';
 };
@@ -90,13 +91,7 @@ const Header = ({ onMenuClick, drawerWidth }) => {
           </IconButton>
         </Tooltip>
 
-        <Tooltip title="Notifications">
-          <IconButton size="small">
-            <Badge badgeContent={3} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-        </Tooltip>
+        <NotificationBell />
 
         <Chip
           label={user?.role?.replace('_', ' ')}

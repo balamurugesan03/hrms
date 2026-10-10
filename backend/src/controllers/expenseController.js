@@ -2,11 +2,24 @@ const Expense = require('../models/Expense');
 const ApiResponse = require('../utils/ApiResponse');
 const ApiError = require('../utils/ApiError');
 const { paginate } = require('../utils/pagination');
+const { notifyEmployee, notifyHR } = require('../utils/notify');
+
+const rs = (n) => `Rs. ${Number(n).toLocaleString('en-IN')}`;
 
 const create = async (req, res, next) => {
   try {
     const attachment = req.file ? req.file.filename : null;
-    const expense = await Expense.create({ ...req.body, attachment });
+    // Employees always claim for themselves; HR can submit on behalf of anyone
+    const employee = req.user.role === 'employee' ? req.user.employee : req.body.employee;
+    if (!employee) throw new ApiError('Employee is required', 400);
+    const { expenseType, amount, description, expenseDate } = req.body;
+    const expense = await Expense.create({ employee, expenseType, amount, description, expenseDate, attachment });
+    notifyHR({
+      title: 'New expense claim',
+      message: `${expenseType} · ${rs(amount)} · ${description}`,
+      type: 'expense',
+      link: '/expenses',
+    }, req.user._id);
     ApiResponse.created(res, expense, 'Expense submitted');
   } catch (error) {
     next(error);
@@ -39,6 +52,12 @@ const approve = async (req, res, next) => {
       { new: true }
     );
     if (!expense) throw new ApiError('Expense not found', 404);
+    notifyEmployee(expense.employee, {
+      title: 'Expense approved ✅',
+      message: `Your ${expense.expenseType} claim of ${rs(expense.amount)} was approved`,
+      type: 'expense',
+      link: '/expenses',
+    });
     ApiResponse.success(res, expense, 'Expense approved');
   } catch (error) {
     next(error);
@@ -53,6 +72,12 @@ const reject = async (req, res, next) => {
       { new: true }
     );
     if (!expense) throw new ApiError('Expense not found', 404);
+    notifyEmployee(expense.employee, {
+      title: 'Expense rejected',
+      message: `Your ${expense.expenseType} claim of ${rs(expense.amount)} was rejected${req.body.rejectionReason ? `: ${req.body.rejectionReason}` : ''}`,
+      type: 'expense',
+      link: '/expenses',
+    });
     ApiResponse.success(res, expense, 'Expense rejected');
   } catch (error) {
     next(error);

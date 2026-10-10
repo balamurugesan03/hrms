@@ -21,6 +21,8 @@ const uploadDocument = async (req, res, next) => {
 
     ApiResponse.success(res, employee.documents, 'Document uploaded');
   } catch (error) {
+    // Don't leave the uploaded file behind when the document could not be saved
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
     next(error);
   }
 };

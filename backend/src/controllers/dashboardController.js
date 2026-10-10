@@ -1,9 +1,12 @@
+const mongoose = require('mongoose');
 const Employee = require('../models/Employee');
 const Attendance = require('../models/Attendance');
 const Leave = require('../models/Leave');
 const Holiday = require('../models/Holiday');
 const Payroll = require('../models/Payroll');
 const Department = require('../models/Department');
+const LeaveType = require('../models/LeaveType');
+const Expense = require('../models/Expense');
 const ApiResponse = require('../utils/ApiResponse');
 
 const getDashboardStats = async (req, res, next) => {
@@ -28,7 +31,7 @@ const getDashboardStats = async (req, res, next) => {
     ] = await Promise.all([
       Employee.countDocuments(),
       Employee.countDocuments({ status: 'active' }),
-      Attendance.countDocuments({ date: { $gte: today, $lt: tomorrow }, attendanceStatus: 'present' }),
+      Attendance.countDocuments({ date: { $gte: today, $lt: tomorrow }, attendanceStatus: { $in: ['present', 'late', 'half_day'] } }),
       Leave.countDocuments({
         status: 'approved',
         fromDate: { $lte: today },
@@ -190,4 +193,100 @@ const getPayrollAnalytics = async (req, res, next) => {
   }
 };
 
-module.exports = { getDashboardStats, getAttendanceTrend, getEmployeeGrowth, getLeaveAnalytics, getPayrollAnalytics };
+// Birthdays and work anniversaries in the next N days (default 30)
+const getCelebrations = async (req, res, next) => {
+  try {
+    const days = Math.min(parseInt(req.query.days) || 30, 90);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const employees = await Employee.find({ status: 'active' })
+      .select('firstName lastName employeeId photo dob joiningDate department')
+      .populate('department', 'departmentName')
+      .lean();
+
+    // Days until the next occurrence of a month/day, plus that date
+    const nextOccurrence = (date) => {
+      const d = new Date(date);
+      let next = new Date(today.getFullYear(), d.getMonth(), d.getDate());
+      if (next < today) next = new Date(today.getFullYear() + 1, d.getMonth(), d.getDate());
+      return { next, inDays: Math.round((next - today) / 86400000) };
+    };
+
+    const birthdays = [];
+    const anniversaries = [];
+    for (const e of employees) {
+      const base = { _id: e._id, name: `${e.firstName} ${e.lastName}`, employeeId: e.employeeId, photo: e.photo, department: e.department?.departmentName };
+      if (e.dob) {
+        const { next, inDays } = nextOccurrence(e.dob);
+        if (inDays <= days) birthdays.push({ ...base, date: next, inDays });
+      }
+      if (e.joiningDate) {
+        const { next, inDays } = nextOccurrence(e.joiningDate);
+        const years = next.getFullYear() - new Date(e.joiningDate).getFullYear();
+        if (years > 0 && inDays <= days) anniversaries.push({ ...base, date: next, inDays, years });
+      }
+    }
+
+    const byDate = (a, b) => a.inDays - b.inDays;
+    ApiResponse.success(res, { birthdays: birthdays.sort(byDate), anniversaries: anniversaries.sort(byDate) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Personal summary for the logged-in employee
+const getMySummary = async (req, res, next) => {
+  try {
+    const employee = req.user.employee;
+    if (!employee) return ApiResponse.success(res, null, 'No employee profile linked');
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    const [attendance, leaveTypes, takenLeaves, pendingLeaves, pendingExpenses, lastPayslip] = await Promise.all([
+      Attendance.find({ employee, date: { $gte: monthStart, $lte: monthEnd } }).select('attendanceStatus workingHours').lean(),
+      LeaveType.find({ status: 'active', isPaid: { $ne: false } }).select('leaveTypeName leaveCode totalDays').lean(),
+      Leave.aggregate([
+        { $match: { employee: mongoose.Types.ObjectId.createFromHexString(String(employee)), status: 'approved', fromDate: { $gte: yearStart } } },
+        { $group: { _id: '$leaveType', taken: { $sum: '$totalDays' } } },
+      ]),
+      Leave.countDocuments({ employee, status: 'pending' }),
+      Expense.countDocuments({ employee, status: 'pending' }),
+      Payroll.findOne({ employee, status: { $in: ['processed', 'paid'] } }).sort({ year: -1, month: -1 }).select('month year netSalary status').lean(),
+    ]);
+
+    const count = (s) => attendance.filter((a) => s.includes(a.attendanceStatus)).length;
+    const takenMap = Object.fromEntries(takenLeaves.map((l) => [String(l._id), l.taken]));
+
+    ApiResponse.success(res, {
+      attendance: {
+        present: count(['present', 'late', 'half_day']),
+        late: count(['late']),
+        absent: count(['absent']),
+        onLeave: count(['on_leave']),
+        hours: Math.round(attendance.reduce((s, a) => s + (a.workingHours || 0), 0) * 10) / 10,
+      },
+      leaveBalance: leaveTypes.map((lt) => ({
+        _id: lt._id,
+        name: lt.leaveTypeName,
+        code: lt.leaveCode,
+        allocated: lt.totalDays,
+        taken: takenMap[String(lt._id)] || 0,
+        remaining: lt.totalDays - (takenMap[String(lt._id)] || 0),
+      })),
+      pendingLeaves,
+      pendingExpenses,
+      lastPayslip,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getDashboardStats, getAttendanceTrend, getEmployeeGrowth, getLeaveAnalytics, getPayrollAnalytics,
+  getCelebrations, getMySummary,
+};

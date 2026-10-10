@@ -60,8 +60,15 @@ export const AuthProvider = ({ children }) => {
     toast.success('Password changed successfully');
   };
 
+  const updateProfile = async (profile) => {
+    const { data } = await api.put('/auth/profile', profile);
+    setUser(data.data);
+    toast.success('Profile updated');
+    return data.data;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, logout, changePassword, fetchProfile }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, logout, changePassword, updateProfile, fetchProfile }}>
       {children}
     </AuthContext.Provider>
   );

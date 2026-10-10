@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Box, Card, CardContent, TextField, Button, Typography, InputAdornment,
-  IconButton, Alert, Link, Divider,
+  IconButton, Alert, Link,
 } from '@mui/material';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -122,22 +122,6 @@ const Login = () => {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
-
-          <Divider sx={{ my: 2 }}>
-            <Typography variant="caption" color="text.secondary">Demo Credentials</Typography>
-          </Divider>
-
-          <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2 }}>
-            <Typography variant="caption" display="block" color="text.secondary">
-              <strong>Super Admin:</strong> admin@hrms.com / Admin@123
-            </Typography>
-            <Typography variant="caption" display="block" color="text.secondary">
-              <strong>HR Manager:</strong> hr@hrms.com / Hr@123456
-            </Typography>
-            <Typography variant="caption" display="block" color="text.secondary">
-              <strong>Employee:</strong> john@hrms.com / Employee@123
-            </Typography>
-          </Box>
         </CardContent>
       </Card>
     </Box>

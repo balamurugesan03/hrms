@@ -25,6 +25,7 @@ export const employeeApi = {
   getAll: (params) => api.get('/employees', { params }),
   getById: (id) => api.get(`/employees/${id}`),
   getProfile: () => api.get('/employees/profile'),
+  getApproverOptions: () => api.get('/employees/approver-options'),
   create: (formData) => api.post('/employees', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   update: (id, formData) => api.put(`/employees/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   delete: (id) => api.delete(`/employees/${id}`),
@@ -43,6 +44,12 @@ export const attendanceApi = {
   getToday: () => api.get('/attendance/today'),
   getMonthly: (params) => api.get('/attendance/monthly-report', { params }),
   bulk: (data) => api.post('/attendance/bulk', data),
+  getMyToday: () => api.get('/attendance/me/today'),
+  checkIn: (data) => api.post('/attendance/check-in', data),
+  checkOut: (data) => api.post('/attendance/check-out', data),
+  getLate: (params) => api.get('/attendance/late', { params }),
+  approveLate: (id, data) => api.put(`/attendance/${id}/late/approve`, data),
+  rejectLate: (id, data) => api.put(`/attendance/${id}/late/reject`, data),
 };
 
 // Leave API
@@ -50,12 +57,22 @@ export const leaveApi = {
   getAll: (params) => api.get('/leave', { params }),
   getById: (id) => api.get(`/leave/${id}`),
   apply: (data) => api.post('/leave', data),
-  approve: (id) => api.put(`/leave/${id}/approve`),
+  approve: (id, data) => api.put(`/leave/${id}/approve`, data),
   reject: (id, data) => api.put(`/leave/${id}/reject`, data),
   cancel: (id) => api.put(`/leave/${id}/cancel`),
   getBalance: (empId) => api.get(`/leave/balance/${empId}`),
   getTypes: () => api.get('/leave/types'),
   createType: (data) => api.post('/leave/types', data),
+};
+
+// Permission API (short leave in hours; monthly quota)
+export const permissionApi = {
+  getAll: (params) => api.get('/permissions', { params }),
+  getQuota: (params) => api.get('/permissions/quota', { params }),
+  apply: (data) => api.post('/permissions', data),
+  approve: (id, data) => api.put(`/permissions/${id}/approve`, data),
+  reject: (id, data) => api.put(`/permissions/${id}/reject`, data),
+  cancel: (id) => api.put(`/permissions/${id}/cancel`),
 };
 
 // Holiday API
@@ -85,6 +102,8 @@ export const payrollApi = {
   process: (data) => api.post('/payroll', data),
   markPaid: (id, data) => api.put(`/payroll/${id}/mark-paid`, data),
   getSummary: (params) => api.get('/payroll/summary', { params }),
+  preview: (params) => api.get('/payroll/preview', { params }),
+  downloadPayslip: (id) => api.get(`/payroll/${id}/payslip`, { responseType: 'blob' }),
 };
 
 // Expense API
@@ -141,6 +160,24 @@ export const dashboardApi = {
   getEmployeeGrowth: () => api.get('/dashboard/employee-growth'),
   getLeaveAnalytics: () => api.get('/dashboard/leave-analytics'),
   getPayrollAnalytics: () => api.get('/dashboard/payroll-analytics'),
+  getCelebrations: (params) => api.get('/dashboard/celebrations', { params }),
+  getMySummary: () => api.get('/dashboard/my-summary'),
+};
+
+// Notification API
+export const notificationApi = {
+  getAll: (params) => api.get('/notifications', { params }),
+  markRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllRead: () => api.put('/notifications/read-all'),
+  clearAll: () => api.delete('/notifications'),
+};
+
+// Announcement API
+export const announcementApi = {
+  getAll: (params) => api.get('/announcements', { params }),
+  create: (data) => api.post('/announcements', data),
+  update: (id, data) => api.put(`/announcements/${id}`, data),
+  delete: (id) => api.delete(`/announcements/${id}`),
 };
 
 // Report API
@@ -150,4 +187,10 @@ export const reportApi = {
   leave: (params) => api.get('/reports/leave', { params, responseType: params?.format === 'excel' ? 'blob' : 'json' }),
   payroll: (params) => api.get('/reports/payroll', { params, responseType: params?.format === 'excel' ? 'blob' : 'json' }),
   assets: (params) => api.get('/reports/assets', { params, responseType: params?.format === 'excel' ? 'blob' : 'json' }),
+};
+
+// Company API (details shown in the app and on payslips; Super Admin edits)
+export const companyApi = {
+  get: () => api.get('/company'),
+  update: (formData) => api.put('/company', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };

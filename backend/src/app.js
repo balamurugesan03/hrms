@@ -28,6 +28,10 @@ const performanceRoutes = require('./routes/performanceRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const announcementRoutes = require('./routes/announcementRoutes');
+const permissionRoutes = require('./routes/permissionRoutes');
+const companyRoutes = require('./routes/companyRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -82,6 +86,10 @@ app.use('/api/performance', performanceRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/announcements', announcementRoutes);
+app.use('/api/permissions', permissionRoutes);
+app.use('/api/company', companyRoutes);
 
 // 404 handler
 app.use((req, res, next) => {

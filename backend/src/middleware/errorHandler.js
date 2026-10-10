@@ -9,9 +9,11 @@ const errorHandler = (err, req, res, next) => {
     console.error('Error:', err);
   }
 
-  // Mongoose bad ObjectId
+  // Mongoose bad ObjectId → not found; any other bad value (number, date…) → 400 naming the field
   if (err.name === 'CastError') {
-    error = new ApiError('Resource not found', 404);
+    error = err.kind === 'ObjectId'
+      ? new ApiError('Resource not found', 404)
+      : new ApiError(`Invalid value for ${err.path}`, 400);
   }
 
   // Mongoose duplicate key
@@ -38,6 +40,7 @@ const errorHandler = (err, req, res, next) => {
   res.status(error.statusCode || 500).json({
     success: false,
     message: error.message || 'Internal Server Error',
+    ...(typeof err.code === 'string' && { code: err.code }),
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };

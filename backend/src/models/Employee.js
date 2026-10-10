@@ -33,8 +33,14 @@ const employeeSchema = new mongoose.Schema(
     confirmationDate: { type: Date },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
     designation: { type: mongoose.Schema.Types.ObjectId, ref: 'Designation', required: true },
-    reportingManager: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+    reportingManager: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }, // legacy single manager
+    // Login users (any role) who must ALL approve this employee's leave and permission requests
+    reportingManagers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    // Who reviews late check-in reasons; falls back to reportingManagers when empty
+    lateApprovers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     shift: { type: mongoose.Schema.Types.ObjectId, ref: 'Shift' },
+    // Drivers must give a pickup location (and a reason when late) at check-in
+    isDriver: { type: Boolean, default: false },
     employmentType: {
       type: String,
       enum: ['full_time', 'part_time', 'contract', 'intern'],

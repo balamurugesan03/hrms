@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCompany } from '../../contexts/CompanyContext';
 import { getInitials } from '../../utils/helpers';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
@@ -25,9 +26,11 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
+import CampaignIcon from '@mui/icons-material/Campaign';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['super_admin', 'hr_manager', 'employee'] },
+  { label: 'Announcements', icon: <CampaignIcon />, path: '/announcements', roles: ['super_admin', 'hr_manager', 'employee'] },
   {
     label: 'Organization',
     icon: <BusinessIcon />,
@@ -54,6 +57,9 @@ const NAV_ITEMS = [
 
 const SidebarContent = ({ collapsed, onToggleCollapse, onNavigate, location, user }) => {
   const [openGroups, setOpenGroups] = useState({ Organization: true });
+  const { company, logoUrl } = useCompany();
+  const brandName = company?.companyName || 'HRMS';
+  const brandInitials = brandName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'HR';
 
   const toggleGroup = (label) => setOpenGroups((p) => ({ ...p, [label]: !p[label] }));
 
@@ -65,19 +71,23 @@ const SidebarContent = ({ collapsed, onToggleCollapse, onNavigate, location, use
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Logo */}
       <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 64 }}>
-        <Box
-          sx={{
-            width: 36, height: 36, borderRadius: 2,
-            background: 'linear-gradient(135deg, #1976d2 0%, #7c3aed 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}
-        >
-          <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>HR</Typography>
-        </Box>
+        {logoUrl ? (
+          <Avatar src={logoUrl} variant="rounded" sx={{ width: 36, height: 36, flexShrink: 0 }} />
+        ) : (
+          <Box
+            sx={{
+              width: 36, height: 36, borderRadius: 2,
+              background: 'linear-gradient(135deg, #1976d2 0%, #7c3aed 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}
+          >
+            <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{brandInitials}</Typography>
+          </Box>
+        )}
         {!collapsed && (
-          <Box>
-            <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2}>HRMS</Typography>
-            <Typography variant="caption" color="text.secondary">Management System</Typography>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2} noWrap>{brandName}</Typography>
+            <Typography variant="caption" color="text.secondary" noWrap display="block">{company?.tagline || 'HR Management System'}</Typography>
           </Box>
         )}
         <Box sx={{ ml: 'auto' }}>

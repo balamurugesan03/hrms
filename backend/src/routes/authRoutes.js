@@ -12,6 +12,7 @@ router.put('/reset-password/:token', validate(resetPasswordSchema), ctrl.resetPa
 router.use(protect);
 router.get('/me', ctrl.getMe);
 router.post('/logout', ctrl.logout);
+router.put('/profile', ctrl.updateProfile);
 router.put('/change-password', validate(changePasswordSchema), ctrl.changePassword);
 
 module.exports = router;

@@ -10,10 +10,34 @@ const POPULATE_FIELDS = [
   { path: 'department', select: 'departmentName departmentCode' },
   { path: 'designation', select: 'designationName designationCode' },
   { path: 'reportingManager', select: 'firstName lastName employeeId' },
+  { path: 'reportingManagers', select: 'name email role' },
+  { path: 'lateApprovers', select: 'name email role' },
   { path: 'shift', select: 'shiftName startTime endTime' },
 ];
 
-const createEmployee = async (data, userId, photoPath) => {
+// Approver lists must reference active login users; the employee cannot approve themselves
+const checkApprovers = async (ids, label, ownUserId) => {
+  if (!Array.isArray(ids)) throw new ApiError(`${label} must be a list`, 400);
+  const unique = [...new Set(ids.map(String))];
+  if (ownUserId && unique.includes(String(ownUserId))) throw new ApiError(`An employee cannot be their own ${label.toLowerCase().replace(/s$/, '')}`, 400);
+  const found = await User.countDocuments({ _id: { $in: unique }, status: 'active' });
+  if (found !== unique.length) throw new ApiError(`${label}: one or more selected users are not active`, 400);
+  return unique;
+};
+
+const getApproverOptions = () => User.find({ status: 'active' }).select('name email role employee').sort({ name: 1 }).lean();
+
+const checkPassword = (password) => {
+  if (password && String(password).length < 6) throw new ApiError('Password must be at least 6 characters', 400);
+};
+
+const createEmployee = async ({ password, ...data }, userId, photoPath) => {
+  if (!password) throw new ApiError('Login password is required', 400);
+  if (!data.shift) throw new ApiError('Shift is required', 400);
+  if (!data.reportingManagers?.length) throw new ApiError('Select at least one reporting manager', 400);
+  checkPassword(password);
+  data.reportingManagers = await checkApprovers(data.reportingManagers, 'Reporting managers');
+  data.lateApprovers = await checkApprovers(data.lateApprovers || [], 'Late approvers');
   const existing = await Employee.findOne({ email: data.email });
   if (existing) throw new ApiError('Employee with this email already exists', 400);
 
@@ -25,12 +49,10 @@ const createEmployee = async (data, userId, photoPath) => {
     createdBy: userId,
   });
 
-  // Create user account
-  const userPassword = `${employee.firstName}@${new Date(data.joiningDate).getFullYear()}`;
   const user = await User.create({
     name: `${data.firstName} ${data.lastName}`,
     email: data.email,
-    password: userPassword,
+    password,
     role: 'employee',
     employee: employee._id,
   });
@@ -71,9 +93,23 @@ const getEmployeeById = async (id) => {
   return employee;
 };
 
-const updateEmployee = async (id, data, photoPath) => {
+const updateEmployee = async (id, { password, ...data }, photoPath) => {
+  checkPassword(password);
   const employee = await Employee.findById(id);
   if (!employee) throw new ApiError('Employee not found', 404);
+  if (data.reportingManagers !== undefined) {
+    if (!data.reportingManagers?.length) throw new ApiError('Select at least one reporting manager', 400);
+    data.reportingManagers = await checkApprovers(data.reportingManagers, 'Reporting managers', employee.user);
+  }
+  if (data.lateApprovers !== undefined) data.lateApprovers = await checkApprovers(data.lateApprovers || [], 'Late approvers', employee.user);
+
+  // Optional login password reset by HR / Admin (save() so the hash hook runs)
+  if (password) {
+    const user = employee.user ? await User.findById(employee.user) : await User.findOne({ email: employee.email });
+    if (!user) throw new ApiError('No login account is linked to this employee', 400);
+    user.password = password;
+    await user.save();
+  }
 
   if (photoPath) data.photo = photoPath;
 
@@ -152,6 +188,6 @@ const importEmployees = async (filePath, userId) => {
 };
 
 module.exports = {
-  createEmployee, getEmployees, getEmployeeById, updateEmployee,
+  createEmployee, getApproverOptions, getEmployees, getEmployeeById, updateEmployee,
   deleteEmployee, getEmployeeProfile, exportEmployees, importEmployees,
 };

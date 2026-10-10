@@ -5,7 +5,9 @@ const { protect, authorize } = require('../middleware/auth');
 
 router.use(protect);
 router.get('/summary', authorize('super_admin', 'hr_manager'), ctrl.getPayrollSummary);
+router.get('/preview', authorize('super_admin', 'hr_manager'), ctrl.previewPayroll);
 router.get('/', ctrl.getPayrolls);
+router.get('/:id/payslip', ctrl.downloadPayslip);
 router.get('/:id', ctrl.getPayrollById);
 router.post('/', authorize('super_admin', 'hr_manager'), ctrl.processPayroll);
 router.put('/:id/mark-paid', authorize('super_admin', 'hr_manager'), ctrl.markPaid);

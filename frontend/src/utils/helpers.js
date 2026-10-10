@@ -23,6 +23,7 @@ export const getStatusColor = (status) => {
     half_day: 'info', on_leave: 'warning', processed: 'info',
     paid: 'success', draft: 'default', available: 'success',
     assigned: 'primary', open: 'success', closed: 'error', on_hold: 'warning',
+    not_required: 'default', not_punched: 'default', permission: 'info',
   };
   return map[status] || 'default';
 };

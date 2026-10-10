@@ -16,8 +16,8 @@ router.get('/balance/:employeeId', ctrl.getLeaveBalance);
 router.get('/', ctrl.getLeaves);
 router.get('/:id', ctrl.getLeaveById);
 router.post('/', ctrl.applyLeave);
-router.put('/:id/approve', authorize('super_admin', 'hr_manager'), ctrl.approveLeave);
-router.put('/:id/reject', authorize('super_admin', 'hr_manager'), ctrl.rejectLeave);
+router.put('/:id/approve', ctrl.approveLeave); // approver check happens in recordDecision
+router.put('/:id/reject', ctrl.rejectLeave);
 router.put('/:id/cancel', ctrl.cancelLeave);
 
 module.exports = router;

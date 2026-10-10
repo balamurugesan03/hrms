@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { Box, CircularProgress } from '@mui/material';
 
 import { AuthProvider } from './contexts/AuthContext';
+import { CompanyProvider } from './contexts/CompanyContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './routes/ProtectedRoute';
 import Layout from './components/layout/Layout';
@@ -32,6 +33,8 @@ import PerformancePage from './pages/performance/PerformancePage';
 import DocumentsPage from './pages/documents/DocumentsPage';
 import ReportsPage from './pages/reports/ReportsPage';
 import SettingsPage from './pages/settings/SettingsPage';
+import AnnouncementsPage from './pages/announcements/AnnouncementsPage';
+import ProfilePage from './pages/profile/ProfilePage';
 
 const Loader = () => (
   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
@@ -44,6 +47,7 @@ const App = () => {
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <ThemeProvider>
         <AuthProvider>
+          <CompanyProvider>
           <Toaster
             position="top-right"
             toastOptions={{
@@ -81,7 +85,7 @@ const App = () => {
                 <Route path="employees/new" element={<ProtectedRoute roles={['super_admin', 'hr_manager']}><EmployeeForm /></ProtectedRoute>} />
                 <Route path="employees/:id" element={<EmployeeProfile />} />
                 <Route path="employees/:id/edit" element={<ProtectedRoute roles={['super_admin', 'hr_manager']}><EmployeeForm /></ProtectedRoute>} />
-                <Route path="profile" element={<EmployeeProfile />} />
+                <Route path="profile" element={<ProfilePage />} />
 
                 {/* Modules */}
                 <Route path="attendance" element={<AttendancePage />} />
@@ -94,12 +98,14 @@ const App = () => {
                 <Route path="documents" element={<ProtectedRoute roles={['super_admin', 'hr_manager']}><DocumentsPage /></ProtectedRoute>} />
                 <Route path="reports" element={<ProtectedRoute roles={['super_admin', 'hr_manager']}><ReportsPage /></ProtectedRoute>} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="announcements" element={<AnnouncementsPage />} />
               </Route>
 
               {/* Catch all */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>
+          </CompanyProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

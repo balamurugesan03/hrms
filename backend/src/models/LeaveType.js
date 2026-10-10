@@ -7,6 +7,8 @@ const leaveTypeSchema = new mongoose.Schema(
     totalDays: { type: Number, required: true, min: 0 },
     description: { type: String },
     isCarryForward: { type: Boolean, default: false },
+    // Unpaid (Loss of Pay) leave has no balance limit and is deducted in payroll
+    isPaid: { type: Boolean, default: true },
     gender: { type: String, enum: ['all', 'male', 'female'], default: 'all' },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   },

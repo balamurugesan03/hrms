@@ -7,6 +7,7 @@ const { photoUpload, documentUpload } = require('../middleware/upload');
 router.use(protect);
 
 router.get('/profile', ctrl.getProfile);
+router.get('/approver-options', authorize('super_admin', 'hr_manager'), ctrl.approverOptions);
 router.get('/export', authorize('super_admin', 'hr_manager'), ctrl.exportExcel);
 router.post('/import', authorize('super_admin', 'hr_manager'), documentUpload.single('file'), ctrl.importExcel);
 router.get('/', ctrl.getAll);

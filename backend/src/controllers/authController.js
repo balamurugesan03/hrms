@@ -31,7 +31,8 @@ const logout = async (req, res, next) => {
 
 const getMe = async (req, res, next) => {
   try {
-    ApiResponse.success(res, req.user, 'Profile fetched');
+    const user = { ...req.user.toObject(), isApprover: await authService.isApprover(req.user._id) };
+    ApiResponse.success(res, user, 'Profile fetched');
   } catch (error) {
     next(error);
   }
@@ -65,4 +66,13 @@ const changePassword = async (req, res, next) => {
   }
 };
 
-module.exports = { login, refreshToken, logout, getMe, forgotPassword, resetPassword, changePassword };
+const updateProfile = async (req, res, next) => {
+  try {
+    const user = await authService.updateProfile(req.user._id, req.body || {});
+    ApiResponse.success(res, { ...user.toObject(), isApprover: await authService.isApprover(user._id) }, 'Profile updated');
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { updateProfile, login, refreshToken, logout, getMe, forgotPassword, resetPassword, changePassword };

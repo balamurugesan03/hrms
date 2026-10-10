@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { approvalsSchema } = require('./approvalSchema');
 
 const leaveSchema = new mongoose.Schema(
   {
@@ -13,6 +14,8 @@ const leaveSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'rejected', 'cancelled'],
       default: 'pending',
     },
+    approvals: { type: approvalsSchema, default: () => ({}) },
+    // Set when the request reaches its final state (last approver / the rejecter)
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     approvedAt: { type: Date },
     rejectionReason: { type: String },

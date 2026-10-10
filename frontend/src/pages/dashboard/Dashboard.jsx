@@ -15,11 +15,25 @@ import EventIcon from '@mui/icons-material/Event';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import { dashboardApi } from '../../api/index';
 import StatCard from '../../components/common/StatCard';
+import CheckInCard from '../../components/dashboard/CheckInCard';
+import AnnouncementsCard from '../../components/dashboard/AnnouncementsCard';
+import CelebrationsCard from '../../components/dashboard/CelebrationsCard';
+import MySummary from '../../components/dashboard/MySummary';
+import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency, formatDate } from '../../utils/helpers';
+
+const greeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+};
 
 const COLORS = ['#1976d2', '#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
 
 const Dashboard = () => {
+  const { user } = useAuth();
+  const isHR = ['super_admin', 'hr_manager'].includes(user?.role);
   const [stats, setStats] = useState(null);
   const [attendanceTrend, setAttendanceTrend] = useState([]);
   const [employeeGrowth, setEmployeeGrowth] = useState([]);
@@ -30,6 +44,12 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchAll = async () => {
       try {
+        if (!isHR) {
+          // Employees only need the holiday list from the org-wide stats
+          const statsRes = await dashboardApi.getStats();
+          setStats(statsRes.data.data);
+          return;
+        }
         const [statsRes, trendRes, growthRes, leaveRes, payrollRes] = await Promise.all([
           dashboardApi.getStats(),
           dashboardApi.getAttendanceTrend({ days: 14 }),
@@ -49,12 +69,73 @@ const Dashboard = () => {
       }
     };
     fetchAll();
-  }, []);
+  }, [isHR]);
+
+  const holidaysCard = (
+    <Card sx={{ height: '100%' }}>
+      <CardContent>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 1.5 }}>Upcoming Holidays</Typography>
+        {(stats?.upcomingHolidays || []).length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>No upcoming holidays</Typography>
+        ) : (
+          <List disablePadding>
+            {(stats?.upcomingHolidays || []).map((h, idx) => (
+              <React.Fragment key={h._id}>
+                {idx > 0 && <Divider component="li" />}
+                <ListItem sx={{ px: 0, py: 1 }}>
+                  <ListItemIcon sx={{ minWidth: 44 }}>
+                    <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' + '20', color: 'primary.main' }}>
+                      <EventIcon fontSize="small" />
+                    </Avatar>
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="body2" fontWeight={600}>{h.holidayName}</Typography>}
+                    secondary={formatDate(h.holidayDate)}
+                  />
+                  <Chip label={h.holidayType} size="small" color="primary" variant="outlined" sx={{ fontSize: 10 }} />
+                </ListItem>
+              </React.Fragment>
+            ))}
+          </List>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 3 }}>Dashboard Overview</Typography>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h5" fontWeight={700}>{greeting()}, {user?.name?.split(' ')[0]} 👋</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {isHR ? "Here's what's happening across the organization today." : "Here's your day at a glance."}
+        </Typography>
+      </Box>
 
+      {/* Personal widgets: check-in, announcements, celebrations */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        {user?.employee && (
+          <Grid item xs={12} md={6} lg={4}>
+            <CheckInCard />
+          </Grid>
+        )}
+        <Grid item xs={12} md={6} lg={user?.employee ? 4 : 7}>
+          <AnnouncementsCard />
+        </Grid>
+        <Grid item xs={12} md={user?.employee ? 12 : 6} lg={user?.employee ? 4 : 5}>
+          <CelebrationsCard />
+        </Grid>
+      </Grid>
+
+      {!isHR && (
+        <>
+          <MySummary />
+          <Grid container spacing={2.5}>
+            <Grid item xs={12} md={6}>{holidaysCard}</Grid>
+          </Grid>
+        </>
+      )}
+
+      {isHR && (<>
       {/* Stat Cards */}
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} lg={3}>
@@ -188,34 +269,7 @@ const Dashboard = () => {
 
         {/* Upcoming Holidays */}
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" fontWeight={600} sx={{ mb: 1.5 }}>Upcoming Holidays</Typography>
-              {(stats?.upcomingHolidays || []).length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>No upcoming holidays</Typography>
-              ) : (
-                <List disablePadding>
-                  {(stats?.upcomingHolidays || []).map((h, idx) => (
-                    <React.Fragment key={h._id}>
-                      {idx > 0 && <Divider component="li" />}
-                      <ListItem sx={{ px: 0, py: 1 }}>
-                        <ListItemIcon sx={{ minWidth: 44 }}>
-                          <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' + '20', color: 'primary.main' }}>
-                            <EventIcon fontSize="small" />
-                          </Avatar>
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={<Typography variant="body2" fontWeight={600}>{h.holidayName}</Typography>}
-                          secondary={formatDate(h.holidayDate)}
-                        />
-                        <Chip label={h.holidayType} size="small" color="primary" variant="outlined" sx={{ fontSize: 10 }} />
-                      </ListItem>
-                    </React.Fragment>
-                  ))}
-                </List>
-              )}
-            </CardContent>
-          </Card>
+          {holidaysCard}
         </Grid>
 
         {/* Employee Growth */}
@@ -242,6 +296,7 @@ const Dashboard = () => {
           </Card>
         </Grid>
       </Grid>
+      </>)}
     </Box>
   );
 };

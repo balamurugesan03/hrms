@@ -1,4 +1,15 @@
 const mongoose = require('mongoose');
+const { approvalsSchema } = require('./approvalSchema');
+
+// Explanation given when checking in after shift start + grace time.
+// Reviewed by the employee's late approvers / reporting managers (same approval flow as leave).
+const lateSchema = new mongoose.Schema({
+  minutes: { type: Number, default: 0 },
+  reason: { type: String, trim: true },
+  pickupLocation: { type: String, trim: true }, // drivers: where they came back from
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  approvals: { type: approvalsSchema, default: () => ({}) },
+}, { _id: false });
 
 const attendanceSchema = new mongoose.Schema(
   {
@@ -14,6 +25,8 @@ const attendanceSchema = new mongoose.Schema(
       default: 'absent',
     },
     notes: { type: String },
+    pickupLocation: { type: String, trim: true }, // drivers: trip they came back from before checking in
+    late: { type: lateSchema },
     shift: { type: mongoose.Schema.Types.ObjectId, ref: 'Shift' },
     markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
@@ -23,5 +36,6 @@ const attendanceSchema = new mongoose.Schema(
 attendanceSchema.index({ employee: 1, date: 1 }, { unique: true });
 attendanceSchema.index({ date: 1 });
 attendanceSchema.index({ attendanceStatus: 1 });
+attendanceSchema.index({ 'late.status': 1 });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

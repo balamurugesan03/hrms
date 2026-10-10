@@ -1,8 +1,12 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
+const Employee = require('../models/Employee');
 const ApiError = require('../utils/ApiError');
 const { sendPasswordResetEmail } = require('../utils/emailService');
+
+// True when this user is a reporting manager / late approver for anyone (shows approval views)
+const isApprover = async (userId) => Boolean(await Employee.exists({ $or: [{ reportingManagers: userId }, { lateApprovers: userId }] }));
 
 const generateTokens = (userId) => {
   const accessToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
@@ -38,6 +42,8 @@ const login = async (email, password) => {
       role: user.role,
       status: user.status,
       lastLogin: user.lastLogin,
+      employee: user.employee,
+      isApprover: await isApprover(user._id),
     },
   };
 };
@@ -109,4 +115,12 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   return { message: 'Password changed successfully' };
 };
 
-module.exports = { login, refreshAccessToken, logout, forgotPassword, resetPassword, changePassword };
+// Own account details (display name only; email is the login and is changed by HR)
+const updateProfile = async (userId, { name }) => {
+  const trimmed = String(name || '').trim();
+  if (trimmed.length < 2) throw new ApiError('Name must be at least 2 characters', 400);
+  const user = await User.findByIdAndUpdate(userId, { name: trimmed }, { new: true, runValidators: true });
+  return user;
+};
+
+module.exports = { isApprover, updateProfile, login, refreshAccessToken, logout, forgotPassword, resetPassword, changePassword };

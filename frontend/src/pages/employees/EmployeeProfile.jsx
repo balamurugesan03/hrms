@@ -27,7 +27,8 @@ const InfoRow = ({ label, value }) => (
   </Box>
 );
 
-const EmployeeProfile = () => {
+// embedded: shown inside My Profile (no page header)
+const EmployeeProfile = ({ embedded = false }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -58,15 +59,15 @@ const EmployeeProfile = () => {
   }, [id]);
 
   if (loading) return <Box sx={{ p: 4, textAlign: 'center' }}>Loading...</Box>;
-  if (!employee) return <Box sx={{ p: 4, textAlign: 'center' }}>Employee not found</Box>;
+  if (!employee) return embedded ? null : <Box sx={{ p: 4, textAlign: 'center' }}>Employee not found</Box>;
 
   const photoUrl = employee.photo ? getApiUrl(`uploads/photos/${employee.photo}`) : undefined;
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: embedded ? 2 : 3 }}>
         {id && <Button startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => navigate('/employees')}>Back</Button>}
-        <Typography variant="h5" fontWeight={700} sx={{ flexGrow: 1 }}>Employee Profile</Typography>
+        <Typography variant={embedded ? 'h6' : 'h5'} fontWeight={700} sx={{ flexGrow: 1 }}>{embedded ? 'My Employee Details' : 'Employee Profile'}</Typography>
         {canEdit && id && (
           <Button startIcon={<EditIcon />} variant="contained" onClick={() => navigate(`/employees/${id}/edit`)}>Edit</Button>
         )}
@@ -118,7 +119,7 @@ const EmployeeProfile = () => {
           <Card sx={{ mt: 2 }}>
             <CardContent>
               <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Leave Balance</Typography>
-              {leaveBalance.map((lb) => (
+              {leaveBalance.filter((lb) => lb.isPaid !== false).map((lb) => (
                 <Box key={lb.leaveType._id} sx={{ mb: 1.5 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                     <Typography variant="caption" fontWeight={500}>{lb.leaveType.leaveTypeName}</Typography>
@@ -161,7 +162,8 @@ const EmployeeProfile = () => {
                 <InfoRow label="Designation" value={employee.designation?.designationName} />
                 <InfoRow label="Employment Type" value={employee.employmentType?.replace('_', ' ')} />
                 <InfoRow label="Joining Date" value={formatDate(employee.joiningDate)} />
-                <InfoRow label="Reporting Manager" value={employee.reportingManager ? `${employee.reportingManager.firstName} ${employee.reportingManager.lastName}` : '-'} />
+                <InfoRow label="Reporting Managers" value={employee.reportingManagers?.length ? employee.reportingManagers.map((u) => u.name).join(', ') : '-'} />
+                <InfoRow label="Late Check-in Approvers" value={employee.lateApprovers?.length ? employee.lateApprovers.map((u) => u.name).join(', ') : 'Same as reporting managers'} />
                 <InfoRow label="Salary" value={formatCurrency(employee.salary)} />
                 <InfoRow label="Status" value={<StatusChip status={employee.status} />} />
               </TabPanel>

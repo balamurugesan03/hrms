@@ -1,11 +1,31 @@
 const empService = require('../services/employeeService');
 const ApiResponse = require('../utils/ApiResponse');
+const ApiError = require('../utils/ApiError');
+
+// Multipart forms send nested objects / arrays as JSON strings
+const JSON_FIELDS = ['address', 'reportingManagers', 'lateApprovers'];
+const parseBody = (body) => {
+  JSON_FIELDS.forEach((field) => {
+    if (typeof body[field] !== 'string') return;
+    try { body[field] = JSON.parse(body[field]); } catch { throw new ApiError(`Invalid ${field}`, 400); }
+  });
+  return body;
+};
 
 const create = async (req, res, next) => {
   try {
     const photoPath = req.file ? req.file.path.replace(/\\/g, '/').split('uploads/')[1] : null;
-    const employee = await empService.createEmployee(req.body, req.user._id, photoPath);
+    const employee = await empService.createEmployee(parseBody(req.body), req.user._id, photoPath);
     ApiResponse.created(res, employee, 'Employee created successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Login users that can be picked as reporting managers / late approvers
+const approverOptions = async (req, res, next) => {
+  try {
+    ApiResponse.success(res, await empService.getApproverOptions());
   } catch (error) {
     next(error);
   }
@@ -32,7 +52,7 @@ const getById = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const photoPath = req.file ? req.file.path.replace(/\\/g, '/').split('uploads/')[1] : null;
-    const employee = await empService.updateEmployee(req.params.id, req.body, photoPath);
+    const employee = await empService.updateEmployee(req.params.id, parseBody(req.body), photoPath);
     ApiResponse.success(res, employee, 'Employee updated successfully');
   } catch (error) {
     next(error);
@@ -78,4 +98,4 @@ const importExcel = async (req, res, next) => {
   }
 };
 
-module.exports = { create, getAll, getById, update, remove, getProfile, exportExcel, importExcel };
+module.exports = { approverOptions, create, getAll, getById, update, remove, getProfile, exportExcel, importExcel };
