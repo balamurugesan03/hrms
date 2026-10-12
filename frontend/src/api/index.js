@@ -189,6 +189,12 @@ export const reportApi = {
   assets: (params) => api.get('/reports/assets', { params, responseType: params?.format === 'excel' ? 'blob' : 'json' }),
 };
 
+// Backup API (module-wise data export; Super Admin only)
+export const backupApi = {
+  modules: () => api.get('/backup/modules'),
+  export: (params) => api.get('/backup/export', { params, responseType: 'blob', timeout: 300000 }),
+};
+
 // Company API (details shown in the app and on payslips; Super Admin edits)
 export const companyApi = {
   get: () => api.get('/company'),

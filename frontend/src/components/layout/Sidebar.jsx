@@ -27,6 +27,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import CampaignIcon from '@mui/icons-material/Campaign';
+import BackupIcon from '@mui/icons-material/Backup';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['super_admin', 'hr_manager', 'employee'] },
@@ -53,6 +54,7 @@ const NAV_ITEMS = [
   { label: 'Performance', icon: <StarIcon />, path: '/performance', roles: ['super_admin', 'hr_manager', 'employee'] },
   { label: 'Documents', icon: <FolderIcon />, path: '/documents', roles: ['super_admin', 'hr_manager'] },
   { label: 'Reports', icon: <AssessmentIcon />, path: '/reports', roles: ['super_admin', 'hr_manager'] },
+  { label: 'Backup & Export', icon: <BackupIcon />, path: '/backup', roles: ['super_admin'] },
 ];
 
 const SidebarContent = ({ collapsed, onToggleCollapse, onNavigate, location, user }) => {

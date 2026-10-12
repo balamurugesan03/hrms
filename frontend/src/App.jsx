@@ -32,6 +32,7 @@ import RecruitmentPage from './pages/recruitment/RecruitmentPage';
 import PerformancePage from './pages/performance/PerformancePage';
 import DocumentsPage from './pages/documents/DocumentsPage';
 import ReportsPage from './pages/reports/ReportsPage';
+import BackupPage from './pages/backup/BackupPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import AnnouncementsPage from './pages/announcements/AnnouncementsPage';
 import ProfilePage from './pages/profile/ProfilePage';
@@ -97,6 +98,7 @@ const App = () => {
                 <Route path="performance" element={<PerformancePage />} />
                 <Route path="documents" element={<ProtectedRoute roles={['super_admin', 'hr_manager']}><DocumentsPage /></ProtectedRoute>} />
                 <Route path="reports" element={<ProtectedRoute roles={['super_admin', 'hr_manager']}><ReportsPage /></ProtectedRoute>} />
+                <Route path="backup" element={<ProtectedRoute roles={['super_admin']}><BackupPage /></ProtectedRoute>} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="announcements" element={<AnnouncementsPage />} />
               </Route>

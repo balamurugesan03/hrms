@@ -32,6 +32,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const permissionRoutes = require('./routes/permissionRoutes');
 const companyRoutes = require('./routes/companyRoutes');
+const backupRoutes = require('./routes/backupRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -54,6 +55,7 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Disposition'],
 }));
 
 app.use(compression());
@@ -90,6 +92,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/permissions', permissionRoutes);
 app.use('/api/company', companyRoutes);
+app.use('/api/backup', backupRoutes);
 
 // 404 handler
 app.use((req, res, next) => {
