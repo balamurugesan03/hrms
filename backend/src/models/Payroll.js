@@ -38,6 +38,15 @@ const payrollSchema = new mongoose.Schema(
     permissionHalfDays: { type: Number, default: 0 },
     lopDays: { type: Number, default: 0 },
     payableDays: { type: Number },
+    // Payroll period (default 26th of previous month → 25th)
+    periodStart: { type: Date },
+    periodEnd: { type: Date },
+    daysInPeriod: { type: Number },
+    // Statutory: ESI is in deductions; Bonus / EL / Gratuity are employer contributions (not in net)
+    basicDA: { type: Number, default: 0 },
+    esi: { type: Number, default: 0 },
+    esiRule: { type: String, enum: ['new', 'old'] },
+    contributions: [allowanceSchema],
     perDaySalary: { type: Number, default: 0 },
     lopDeduction: { type: Number, default: 0 },
     overtimeHours: { type: Number, default: 0 },

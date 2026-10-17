@@ -32,10 +32,20 @@ const monthRange = (month, year) => ({
   end: new Date(year, month, 1), // exclusive
 });
 
+// Payroll cycle: the payroll for `month` runs from PAYROLL_CYCLE_START_DAY of the previous month
+// to the day before it in `month` (default 26 → 25, e.g. October = 26 Sep – 25 Oct). 1 = calendar month.
+const PAYROLL_CYCLE_START_DAY = Number(process.env.PAYROLL_CYCLE_START_DAY) || 26;
+
+const payrollPeriod = (month, year) => {
+  const start = new Date(year, month - (PAYROLL_CYCLE_START_DAY > 1 ? 2 : 1), PAYROLL_CYCLE_START_DAY);
+  const end = new Date(year, month - (PAYROLL_CYCLE_START_DAY > 1 ? 1 : 0), PAYROLL_CYCLE_START_DAY); // exclusive
+  return { start, end, days: Math.round((end - start) / 86400000) };
+};
+
 const formatMinutes = (mins) => {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`;
 };
 
-module.exports = { toMinutes, nowHHmm, dayKey, startOfDay, monthRange, formatMinutes };
+module.exports = { toMinutes, nowHHmm, dayKey, startOfDay, monthRange, payrollPeriod, formatMinutes };

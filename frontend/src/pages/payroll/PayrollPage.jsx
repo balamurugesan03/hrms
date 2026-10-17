@@ -14,11 +14,29 @@ import DataTable from '../../components/common/DataTable';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
 import usePagination from '../../hooks/usePagination';
-import { formatCurrency, MONTHS, downloadBlob } from '../../utils/helpers';
+import { formatCurrency, formatDate, MONTHS, downloadBlob } from '../../utils/helpers';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 const fmtMins = (mins = 0) => `${Math.floor(mins / 60)}h ${mins % 60}m`;
+
+// Statutory amounts — same formulas as the server (services/payrollCalculator.js)
+const isDA = (name = '') => /^\s*(da\b|dearness)/i.test(name);
+const ESI_ROW = /^ESI\b/i;
+const statutoryFor = ({ basicSalary, allowances, fixedGross, salaryEarned, esiRule }) => {
+  const basicDA = (Number(basicSalary) || 0) + allowances.filter((a) => isDA(a.name)).reduce((n, a) => n + (Number(a.amount) || 0), 0);
+  const esi = esiRule === 'new'
+    ? (basicDA > 21000 ? 0 : basicDA * 0.0075)
+    : (fixedGross > 21000 ? 0 : salaryEarned * 0.0075);
+  return {
+    basicDA, esiRule, esi: Math.round(esi),
+    contributions: [
+      { name: 'Bonus (8.33%)', amount: Math.round(basicDA * 0.0833) },
+      { name: 'EL', amount: Math.round((basicDA / 26) * 1.3) },
+      { name: 'Gratuity', amount: Math.round(((basicDA / 26) * 15) / 12) },
+    ],
+  };
+};
 
 // Default structure from the employee's monthly salary (editable)
 const structureFor = (salary = 0) => ({
@@ -42,7 +60,7 @@ const newForm = () => ({
 // Attendance / leave / permission breakdown that drives Loss of Pay
 const BreakdownGrid = ({ s }) => {
   const items = [
-    ['Days in month', s.daysInMonth],
+    ['Days in period', s.daysInPeriod],
     ['Working days', s.workingDays],
     ['Weekly off + Holidays', `${s.weeklyOffs ?? 0} + ${s.holidays ?? 0}`],
     ['Present', s.presentDays],
@@ -148,12 +166,18 @@ const PayrollPage = () => {
 
   // Live calculation (same formula as the server)
   const totalAllowances = form.allowances.reduce((n, a) => n + (Number(a.amount) || 0), 0);
-  const otherDeductions = form.deductions.reduce((n, d) => n + (Number(d.amount) || 0), 0);
-  const gross = (Number(form.basicSalary) || 0) + totalAllowances + (Number(form.overtimePay) || 0);
+  // ESI is calculated automatically, so a manual ESI row is ignored (as on the server)
+  const otherDeductions = form.deductions.filter((d) => !ESI_ROW.test(d.name || '')).reduce((n, d) => n + (Number(d.amount) || 0), 0);
+  const fixedGross = (Number(form.basicSalary) || 0) + totalAllowances;
+  const gross = fixedGross + (Number(form.overtimePay) || 0);
   const s = preview?.summary;
-  const perDay = s ? Math.round((((Number(form.basicSalary) || 0) + totalAllowances) / s.daysInMonth) * 100) / 100 : 0;
+  const perDay = s ? Math.round((fixedGross / s.daysInPeriod) * 100) / 100 : 0;
   const lopDeduction = s ? Math.round(perDay * s.lopDays) : 0;
-  const net = Math.max(0, gross - otherDeductions - lopDeduction);
+  const stat = statutoryFor({
+    basicSalary: form.basicSalary, allowances: form.allowances, fixedGross, salaryEarned: Math.max(0, gross - lopDeduction),
+    esiRule: preview?.esiRule || 'old', // decided by the server from the joining date
+  });
+  const net = Math.max(0, gross - otherDeductions - stat.esi - lopDeduction);
   const locked = preview?.existingStatus && preview.existingStatus !== 'draft';
 
   const handleProcess = async () => {
@@ -261,7 +285,9 @@ const PayrollPage = () => {
               {!previewLoading && s && (
                 <Card variant="outlined">
                   <CardContent>
-                    <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>Attendance, leave & permission for {MONTHS[form.month - 1]} {form.year}</Typography>
+                    <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                      Attendance, leave & permission for {MONTHS[form.month - 1]} {form.year} ({formatDate(s.periodStart)} – {formatDate(s.periodEnd)})
+                    </Typography>
                     <BreakdownGrid s={s} />
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
                       LOP = absent days + unpaid leave + uncovered half-days + permissions beyond the monthly limit (½ day each).
@@ -290,6 +316,7 @@ const PayrollPage = () => {
                   {[
                     ['Gross', formatCurrency(gross)],
                     ['Deductions', `-${formatCurrency(otherDeductions)}`],
+                    [`ESI 0.75% (${stat.esiRule === 'new' ? 'Basic + DA' : 'salary earned'})`, `-${formatCurrency(stat.esi)}`],
                     [`Loss of Pay (${s?.lopDays ?? 0} days × ${formatCurrency(Math.round(perDay))})`, `-${formatCurrency(lopDeduction)}`, 'error.main'],
                   ].map(([label, value, color]) => (
                     <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
@@ -302,6 +329,24 @@ const PayrollPage = () => {
                     <Typography fontWeight={700}>Net Salary</Typography>
                     <Typography fontWeight={700} color="success.main">{formatCurrency(net)}</Typography>
                   </Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                    Employer contributions on Basic + DA {formatCurrency(stat.basicDA)} (not part of net)
+                  </Typography>
+                  {stat.contributions.map((c) => (
+                    <Box key={c.name} sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">{c.name}</Typography>
+                      <Typography variant="body2">{formatCurrency(c.amount)}</Typography>
+                    </Box>
+                  ))}
+                  {s && (
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                      {stat.esiRule === 'new'
+                        ? `Joined on/after ${formatDate(preview.esiNewRuleFrom)}: ESI = 0 if Basic + DA > ₹21,000, else (Basic + DA) × 0.75%.`
+                        : `Joined before ${formatDate(preview.esiNewRuleFrom)}: ESI = 0 if gross > ₹21,000, else salary earned × 0.75%.`}
+                      {' '}DA = an allowance named "DA" or "Dearness Allowance".
+                    </Typography>
+                  )}
                 </CardContent>
               </Card>
             </Grid>
@@ -333,7 +378,13 @@ const PayrollPage = () => {
             {viewPayslip.payableDays != null && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>Attendance & Leave</Typography>
-                <BreakdownGrid s={{ ...viewPayslip, daysInMonth: new Date(viewPayslip.year, viewPayslip.month, 0).getDate() }} />
+                {viewPayslip.periodStart && (
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                    Period: {formatDate(viewPayslip.periodStart)} – {formatDate(viewPayslip.periodEnd)}
+                  </Typography>
+                )}
+                {/* Payrolls before the 26–25 cycle were calendar months */}
+                <BreakdownGrid s={{ ...viewPayslip, daysInPeriod: viewPayslip.daysInPeriod ?? new Date(viewPayslip.year, viewPayslip.month, 0).getDate() }} />
               </Box>
             )}
 
@@ -373,6 +424,21 @@ const PayrollPage = () => {
               <Typography variant="h6" fontWeight={700}>Net Salary</Typography>
               <Typography variant="h6" fontWeight={700} color="success.main">{formatCurrency(viewPayslip.netSalary)}</Typography>
             </Box>
+
+            {viewPayslip.contributions?.length > 0 && (
+              <>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>Employer Contributions (Basic + DA {formatCurrency(viewPayslip.basicDA)})</Typography>
+                <List dense disablePadding>
+                  {viewPayslip.contributions.map((c, i) => (
+                    <ListItem key={i} sx={{ px: 0 }}>
+                      <ListItemText primary={c.name} />
+                      <Typography>{formatCurrency(c.amount)}</Typography>
+                    </ListItem>
+                  ))}
+                </List>
+              </>
+            )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2.5 }}>
             <Button onClick={() => setViewPayslip(null)} variant="contained">Close</Button>

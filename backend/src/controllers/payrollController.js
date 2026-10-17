@@ -5,7 +5,8 @@ const ApiError = require('../utils/ApiError');
 const { paginate } = require('../utils/pagination');
 const { notifyEmployee } = require('../utils/notify');
 const { generatePayslip } = require('../utils/payslipPdf');
-const { computeAttendanceSummary, computeSalary } = require('../services/payrollCalculator');
+const { computeAttendanceSummary, computeSalary, esiRuleFor, ESI_NEW_RULE_FROM } = require('../services/payrollCalculator');
+const { dayKey } = require('../utils/time');
 const { getCompanyDetails } = require('./companyController');
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -24,7 +25,7 @@ const previewPayroll = async (req, res, next) => {
     if (!employee || !month || !year) throw new ApiError('employee, month and year are required', 400);
     const { employee: emp, summary, days } = await computeAttendanceSummary(employee, Number(month), Number(year));
     const existing = await Payroll.findOne({ employee, month, year }).select('status').lean();
-    ApiResponse.success(res, { employee: emp, summary, days, existingStatus: existing?.status || null });
+    ApiResponse.success(res, { employee: emp, summary, days, existingStatus: existing?.status || null, esiRule: esiRuleFor(emp.joiningDate), esiNewRuleFrom: dayKey(ESI_NEW_RULE_FROM) });
   } catch (error) {
     next(error);
   }
@@ -43,10 +44,10 @@ const processPayroll = async (req, res, next) => {
     const existing = await Payroll.findOne({ employee, month, year });
     if (existing && existing.status !== 'draft') throw new ApiError('Payroll already processed for this month', 400);
 
-    const { summary } = await computeAttendanceSummary(employee, month, year);
+    const { employee: emp, summary } = await computeAttendanceSummary(employee, month, year);
     const cleanAllowances = allowances.filter((x) => x?.name && Number(x.amount) > 0).map((x) => ({ name: x.name, amount: Number(x.amount) }));
     const cleanDeductions = deductions.filter((x) => x?.name && Number(x.amount) > 0).map((x) => ({ name: x.name, amount: Number(x.amount) }));
-    const pay = computeSalary({ basicSalary: Number(basicSalary), allowances: cleanAllowances, deductions: cleanDeductions, overtimePay: Number(overtimePay) || 0 }, summary);
+    const pay = computeSalary({ basicSalary: Number(basicSalary), allowances: cleanAllowances, deductions: cleanDeductions, overtimePay: Number(overtimePay) || 0 }, summary, emp);
 
     const data = {
       employee, month, year,
@@ -60,6 +61,13 @@ const processPayroll = async (req, res, next) => {
       netSalary: pay.netSalary,
       perDaySalary: pay.perDaySalary,
       lopDeduction: pay.lopDeduction,
+      periodStart: summary.periodStart,
+      periodEnd: summary.periodEnd,
+      daysInPeriod: summary.daysInPeriod,
+      basicDA: pay.basicDA,
+      esi: pay.esi,
+      esiRule: pay.esiRule,
+      contributions: pay.contributions,
       workingDays: summary.workingDays,
       presentDays: summary.presentDays,
       absentDays: summary.absentDays,

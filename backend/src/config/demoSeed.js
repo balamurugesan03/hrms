@@ -242,11 +242,13 @@ const seed = async () => {
   for (const emp of emps) {
     const { summary: s } = await computeAttendanceSummary(emp._id, prev.month, prev.year);
     const st = structure(emp);
-    const pay = computeSalary(st, s);
+    const pay = computeSalary(st, s, emp);
     payrolls.push({
       employee: emp._id, month: prev.month, year: prev.year, basicSalary: st.basicSalary, allowances: st.allowances,
       deductions: pay.deductions, totalAllowances: pay.totalAllowances, totalDeductions: pay.totalDeductions,
       grossSalary: pay.grossSalary, netSalary: pay.netSalary, perDaySalary: pay.perDaySalary, lopDeduction: pay.lopDeduction,
+      periodStart: s.periodStart, periodEnd: s.periodEnd, daysInPeriod: s.daysInPeriod,
+      basicDA: pay.basicDA, esi: pay.esi, esiRule: pay.esiRule, contributions: pay.contributions,
       workingDays: s.workingDays, presentDays: s.presentDays, absentDays: s.absentDays,
       leaveDays: s.paidLeaveDays + s.unpaidLeaveDays, weeklyOffs: s.weeklyOffs, holidays: s.holidays,
       lateDays: s.lateDays, halfDays: s.halfDays, paidLeaveDays: s.paidLeaveDays, unpaidLeaveDays: s.unpaidLeaveDays,

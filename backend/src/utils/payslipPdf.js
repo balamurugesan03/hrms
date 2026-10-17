@@ -55,7 +55,9 @@ const generatePayslip = (payroll, res, companyInfo = {}) => {
   }
   doc.fillColor('#fff').fontSize(22).font('Helvetica-Bold').text(company, textLeft, addressLine ? 20 : 28);
   if (addressLine) doc.fontSize(9).font('Helvetica').text(addressLine, textLeft, 44, { width: width - (textLeft - left) - 150 });
-  doc.fontSize(11).font('Helvetica').text(`Payslip for ${MONTHS[payroll.month - 1]} ${payroll.year}`, textLeft, addressLine ? 62 : 56);
+  const fmtDay = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const period = payroll.periodStart ? ` (${fmtDay(payroll.periodStart)} - ${fmtDay(payroll.periodEnd)})` : '';
+  doc.fontSize(11).font('Helvetica').text(`Payslip for ${MONTHS[payroll.month - 1]} ${payroll.year}${period}`, textLeft, addressLine ? 62 : 56);
   doc.fontSize(10).text(`Status: ${String(payroll.status).toUpperCase()}`, left, 56, { width, align: 'right' });
 
   // Employee details
@@ -136,6 +138,16 @@ const generatePayslip = (payroll, res, companyInfo = {}) => {
   doc.font('Helvetica-Bold').fontSize(20).text(money(payroll.netSalary), left + 16, y + 26);
   doc.font('Helvetica').fontSize(9).text(amountInWords(payroll.netSalary), left, y + 32, { width: width - 16, align: 'right' });
   y += 80;
+
+  // Employer contributions (Bonus / EL / Gratuity) — informational, not part of net pay
+  if (payroll.contributions?.length) {
+    doc.fillColor('#111').font('Helvetica-Bold').fontSize(10)
+      .text(`Employer Contributions (on Basic + DA ${money(payroll.basicDA)})`, left, y);
+    y += 16;
+    doc.font('Helvetica').fontSize(9).fillColor('#333')
+      .text(payroll.contributions.map((c) => `${c.name}: ${money(c.amount)}`).join('     '), left, y, { width });
+    y += 24;
+  }
 
   if (payroll.remarks) {
     doc.fillColor('#666').fontSize(9).text(`Remarks: ${payroll.remarks}`, left, y);
