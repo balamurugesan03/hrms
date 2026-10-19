@@ -104,7 +104,6 @@ const seed = async () => {
     { leaveTypeName: 'Paternity Leave', leaveCode: 'PL', totalDays: 5, description: 'For new fathers', gender: 'male' },
     { leaveTypeName: 'Loss of Pay', leaveCode: 'LOP', totalDays: 0, description: 'Unpaid leave — deducted from salary', isPaid: false },
     { leaveTypeName: 'Medical Leave', leaveCode: 'MDL', totalDays: 12, description: 'For illness or medical treatment' },
-    { leaveTypeName: 'Leave with Work', leaveCode: 'LWW', totalDays: 12, description: 'Away from office but working (on duty / remote) — paid' },
   ]);
 
   // Holidays (always upcoming)

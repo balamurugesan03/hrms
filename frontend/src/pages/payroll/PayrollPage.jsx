@@ -40,6 +40,7 @@ const statutoryFor = ({ basicSalary, allowances, fixedGross, salaryEarned, esiRu
 
 // Default structure from the employee's monthly salary (editable)
 const structureFor = (salary = 0) => ({
+  grossSalary: salary,
   basicSalary: Math.round(salary * 0.5),
   allowances: [
     { name: 'HRA', amount: Math.round(salary * 0.2) },
@@ -305,6 +306,9 @@ const PayrollPage = () => {
             </Grid>
 
             <Grid item xs={12} md={6}>
+              <TextField label="Gross Salary (monthly)" type="number" fullWidth size="small" sx={{ mb: 2 }} value={form.grossSalary}
+                helperText="From the employee's salary — changing it re-splits Basic, allowances and PF"
+                onChange={(e) => setForm({ ...form, ...structureFor(parseFloat(e.target.value) || 0) })} />
               <TextField label="Basic Salary *" type="number" fullWidth size="small" sx={{ mb: 2 }} value={form.basicSalary} onChange={(e) => setForm({ ...form, basicSalary: parseFloat(e.target.value) || 0 })} />
               <AmountRows title="Allowances" rows={form.allowances} onChange={(allowances) => setForm({ ...form, allowances })} />
               <TextField label="Overtime Pay" type="number" fullWidth size="small" value={form.overtimePay} onChange={(e) => setForm({ ...form, overtimePay: parseFloat(e.target.value) || 0 })} />

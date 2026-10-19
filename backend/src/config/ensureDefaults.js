@@ -4,7 +4,6 @@ const LeaveType = require('../models/LeaveType');
 const DEFAULT_LEAVE_TYPES = [
   { leaveTypeName: 'Casual Leave', leaveCode: 'CL', totalDays: 12, description: 'For personal matters' },
   { leaveTypeName: 'Medical Leave', leaveCode: 'MDL', totalDays: 12, description: 'For illness or medical treatment' },
-  { leaveTypeName: 'Leave with Work', leaveCode: 'LWW', totalDays: 12, description: 'Away from office but working (on duty / remote) — paid' },
   {
     leaveTypeName: 'Loss of Pay', leaveCode: 'LOP', totalDays: 0, isPaid: false,
     description: 'Unpaid leave — deducted from salary',
@@ -19,6 +18,12 @@ const ensureDefaults = async () => {
     } catch (err) {
       console.error(`ensureDefaults error (${lt.leaveCode}):`, err.message);
     }
+  }
+  // Retired leave type: hidden from new requests, kept so past leave records still resolve
+  try {
+    await LeaveType.updateOne({ leaveCode: 'LWW' }, { $set: { status: 'inactive' } });
+  } catch (err) {
+    console.error('ensureDefaults error (LWW):', err.message);
   }
 };
 
