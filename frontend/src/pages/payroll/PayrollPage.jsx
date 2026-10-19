@@ -55,7 +55,7 @@ const structureFor = (salary = 0) => ({
 
 const newForm = () => ({
   employee: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(),
-  ...structureFor(0), overtimePay: 0, remarks: '',
+  ...structureFor(0), da: 0, overtimePay: 0, remarks: '',
 });
 
 // Attendance / leave / permission breakdown that drives Loss of Pay
@@ -162,11 +162,14 @@ const PayrollPage = () => {
 
   const selectEmployee = (id) => {
     const emp = employees.find((e) => e._id === id);
-    setForm((f) => ({ ...f, employee: id, ...structureFor(emp?.salary || 0) }));
+    setForm((f) => ({ ...f, employee: id, ...structureFor(emp?.salary || 0), da: 0 }));
   };
 
+  // Manual DA goes to the server as an allowance named "DA" (counted in Basic + DA)
+  const allowances = Number(form.da) > 0 ? [{ name: 'DA', amount: Number(form.da) }, ...form.allowances] : form.allowances;
+
   // Live calculation (same formula as the server)
-  const totalAllowances = form.allowances.reduce((n, a) => n + (Number(a.amount) || 0), 0);
+  const totalAllowances = allowances.reduce((n, a) => n + (Number(a.amount) || 0), 0);
   // ESI is calculated automatically, so a manual ESI row is ignored (as on the server)
   const otherDeductions = form.deductions.filter((d) => !ESI_ROW.test(d.name || '')).reduce((n, d) => n + (Number(d.amount) || 0), 0);
   const fixedGross = (Number(form.basicSalary) || 0) + totalAllowances;
@@ -175,7 +178,7 @@ const PayrollPage = () => {
   const perDay = s ? Math.round((fixedGross / s.daysInPeriod) * 100) / 100 : 0;
   const lopDeduction = s ? Math.round(perDay * s.lopDays) : 0;
   const stat = statutoryFor({
-    basicSalary: form.basicSalary, allowances: form.allowances, fixedGross, salaryEarned: Math.max(0, gross - lopDeduction),
+    basicSalary: form.basicSalary, allowances, fixedGross, salaryEarned: Math.max(0, gross - lopDeduction),
     esiRule: preview?.esiRule || 'old', // decided by the server from the joining date
   });
   const net = Math.max(0, gross - otherDeductions - stat.esi - lopDeduction);
@@ -185,7 +188,8 @@ const PayrollPage = () => {
     if (!form.employee || form.basicSalary === '') return toast.error('Select an employee and enter basic salary');
     setSaving(true);
     try {
-      await payrollApi.process(form);
+      const { da, ...rest } = form;
+      await payrollApi.process({ ...rest, allowances });
       toast.success('Payroll processed');
       setOpenProcess(false);
       setForm(newForm());
@@ -310,6 +314,9 @@ const PayrollPage = () => {
                 helperText="From the employee's salary — changing it re-splits Basic, allowances and PF"
                 onChange={(e) => setForm({ ...form, ...structureFor(parseFloat(e.target.value) || 0) })} />
               <TextField label="Basic Salary *" type="number" fullWidth size="small" sx={{ mb: 2 }} value={form.basicSalary} onChange={(e) => setForm({ ...form, basicSalary: parseFloat(e.target.value) || 0 })} />
+              <TextField label="DA (Dearness Allowance)" type="number" fullWidth size="small" sx={{ mb: 2 }} value={form.da}
+                helperText="Manual entry — added to earnings and to Basic + DA for ESI, Bonus, EL and Gratuity"
+                onChange={(e) => setForm({ ...form, da: parseFloat(e.target.value) || 0 })} />
               <AmountRows title="Allowances" rows={form.allowances} onChange={(allowances) => setForm({ ...form, allowances })} />
               <TextField label="Overtime Pay" type="number" fullWidth size="small" value={form.overtimePay} onChange={(e) => setForm({ ...form, overtimePay: parseFloat(e.target.value) || 0 })} />
             </Grid>
@@ -348,7 +355,7 @@ const PayrollPage = () => {
                       {stat.esiRule === 'new'
                         ? `Joined on/after ${formatDate(preview.esiNewRuleFrom)}: ESI = 0 if Basic + DA > ₹21,000, else (Basic + DA) × 0.75%.`
                         : `Joined before ${formatDate(preview.esiNewRuleFrom)}: ESI = 0 if gross > ₹21,000, else salary earned × 0.75%.`}
-                      {' '}DA = an allowance named "DA" or "Dearness Allowance".
+                      {' '}DA = the DA box plus any allowance named "DA" or "Dearness Allowance".
                     </Typography>
                   )}
                 </CardContent>
