@@ -42,8 +42,9 @@ const payrollSchema = new mongoose.Schema(
     periodStart: { type: Date },
     periodEnd: { type: Date },
     daysInPeriod: { type: Number },
-    // Statutory: ESI is in deductions; Bonus / EL / Gratuity are employer contributions (not in net)
+    // Statutory: PF and ESI are in deductions; Bonus / EL / Gratuity are employer contributions (not in net)
     basicDA: { type: Number, default: 0 },
+    pf: { type: Number, default: 0 },
     esi: { type: Number, default: 0 },
     esiRule: { type: String, enum: ['new', 'old'] },
     contributions: [allowanceSchema],

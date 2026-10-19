@@ -65,6 +65,7 @@ const processPayroll = async (req, res, next) => {
       periodEnd: summary.periodEnd,
       daysInPeriod: summary.daysInPeriod,
       basicDA: pay.basicDA,
+      pf: pay.pf,
       esi: pay.esi,
       esiRule: pay.esiRule,
       contributions: pay.contributions,

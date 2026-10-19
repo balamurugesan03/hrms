@@ -23,13 +23,14 @@ const fmtMins = (mins = 0) => `${Math.floor(mins / 60)}h ${mins % 60}m`;
 // Statutory amounts — same formulas as the server (services/payrollCalculator.js)
 const isDA = (name = '') => /^\s*(da\b|dearness)/i.test(name);
 const ESI_ROW = /^ESI\b/i;
+const PF_ROW = /^(E?PF\b|provident)/i;
 const statutoryFor = ({ basicSalary, allowances, fixedGross, salaryEarned, esiRule }) => {
   const basicDA = (Number(basicSalary) || 0) + allowances.filter((a) => isDA(a.name)).reduce((n, a) => n + (Number(a.amount) || 0), 0);
   const esi = esiRule === 'new'
     ? (basicDA > 21000 ? 0 : basicDA * 0.0075)
     : (fixedGross > 21000 ? 0 : salaryEarned * 0.0075);
   return {
-    basicDA, esiRule, esi: Math.round(esi),
+    basicDA, esiRule, pf: Math.round(basicDA * 0.12), esi: Math.round(esi),
     contributions: [
       { name: 'Bonus (8.33%)', amount: Math.round(basicDA * 0.0833) },
       { name: 'EL', amount: Math.round((basicDA / 26) * 1.3) },
@@ -47,8 +48,8 @@ const structureFor = (salary = 0) => ({
     { name: 'Special Allowance', amount: Math.round(salary * 0.25) },
     { name: 'Transport', amount: Math.round(salary * 0.05) },
   ],
+  // PF is calculated automatically on Basic + DA
   deductions: [
-    { name: 'PF (12%)', amount: Math.round(salary * 0.5 * 0.12) },
     { name: 'Professional Tax', amount: salary ? 200 : 0 },
   ],
 });
@@ -170,8 +171,8 @@ const PayrollPage = () => {
 
   // Live calculation (same formula as the server)
   const totalAllowances = allowances.reduce((n, a) => n + (Number(a.amount) || 0), 0);
-  // ESI is calculated automatically, so a manual ESI row is ignored (as on the server)
-  const otherDeductions = form.deductions.filter((d) => !ESI_ROW.test(d.name || '')).reduce((n, d) => n + (Number(d.amount) || 0), 0);
+  // PF and ESI are calculated automatically, so manual PF / ESI rows are ignored (as on the server)
+  const otherDeductions = form.deductions.filter((d) => !ESI_ROW.test(d.name || '') && !PF_ROW.test(d.name || '')).reduce((n, d) => n + (Number(d.amount) || 0), 0);
   const fixedGross = (Number(form.basicSalary) || 0) + totalAllowances;
   const gross = fixedGross + (Number(form.overtimePay) || 0);
   const s = preview?.summary;
@@ -181,7 +182,7 @@ const PayrollPage = () => {
     basicSalary: form.basicSalary, allowances, fixedGross, salaryEarned: Math.max(0, gross - lopDeduction),
     esiRule: preview?.esiRule || 'old', // decided by the server from the joining date
   });
-  const net = Math.max(0, gross - otherDeductions - stat.esi - lopDeduction);
+  const net = Math.max(0, gross - otherDeductions - stat.pf - stat.esi - lopDeduction);
   const locked = preview?.existingStatus && preview.existingStatus !== 'draft';
 
   const handleProcess = async () => {
@@ -311,11 +312,11 @@ const PayrollPage = () => {
 
             <Grid item xs={12} md={6}>
               <TextField label="Gross Salary (monthly)" type="number" fullWidth size="small" sx={{ mb: 2 }} value={form.grossSalary}
-                helperText="From the employee's salary — changing it re-splits Basic, allowances and PF"
+                helperText="From the employee's salary — changing it re-splits Basic and allowances"
                 onChange={(e) => setForm({ ...form, ...structureFor(parseFloat(e.target.value) || 0) })} />
               <TextField label="Basic Salary *" type="number" fullWidth size="small" sx={{ mb: 2 }} value={form.basicSalary} onChange={(e) => setForm({ ...form, basicSalary: parseFloat(e.target.value) || 0 })} />
               <TextField label="DA (Dearness Allowance)" type="number" fullWidth size="small" sx={{ mb: 2 }} value={form.da}
-                helperText="Manual entry — added to earnings and to Basic + DA for ESI, Bonus, EL and Gratuity"
+                helperText="Manual entry — added to earnings and to Basic + DA for PF, ESI, Bonus, EL and Gratuity"
                 onChange={(e) => setForm({ ...form, da: parseFloat(e.target.value) || 0 })} />
               <AmountRows title="Allowances" rows={form.allowances} onChange={(allowances) => setForm({ ...form, allowances })} />
               <TextField label="Overtime Pay" type="number" fullWidth size="small" value={form.overtimePay} onChange={(e) => setForm({ ...form, overtimePay: parseFloat(e.target.value) || 0 })} />
@@ -327,6 +328,7 @@ const PayrollPage = () => {
                   {[
                     ['Gross', formatCurrency(gross)],
                     ['Deductions', `-${formatCurrency(otherDeductions)}`],
+                    [`PF 12% (Basic + DA ${formatCurrency(stat.basicDA)})`, `-${formatCurrency(stat.pf)}`],
                     [`ESI 0.75% (${stat.esiRule === 'new' ? 'Basic + DA' : 'salary earned'})`, `-${formatCurrency(stat.esi)}`],
                     [`Loss of Pay (${s?.lopDays ?? 0} days × ${formatCurrency(Math.round(perDay))})`, `-${formatCurrency(lopDeduction)}`, 'error.main'],
                   ].map(([label, value, color]) => (

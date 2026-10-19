@@ -123,20 +123,23 @@ const computeAttendanceSummary = async (employeeId, month, year) => {
 const ESI_NEW_RULE_FROM = startOfDay(process.env.ESI_NEW_RULE_FROM || '2026-09-17');
 const ESI_WAGE_LIMIT = 21000;
 const ESI_RATE = 0.0075;
+const PF_RATE = 0.12;
 
 // An allowance named "DA" / "Dearness Allowance" counts as DA
 const isDA = (name = '') => /^\s*(da\b|dearness)/i.test(name);
 const ESI_ROW = /^ESI\b/i;
+const PF_ROW = /^(E?PF\b|provident)/i;
 const esiRuleFor = (joiningDate) => (joiningDate && startOfDay(joiningDate) >= ESI_NEW_RULE_FROM ? 'new' : 'old');
 
 /**
  * Statutory amounts on the monthly Basic + DA:
+ *   PF       = (Basic + DA) × 12%
  *   Bonus    = (Basic + DA) × 8.33%
  *   EL       = (Basic + DA) / 26 × 1.3
  *   Gratuity = (Basic + DA) / 26 × 15 / 12
  *   ESI (joined on/after ESI_NEW_RULE_FROM) = IF(Basic + DA > 21000, 0, (Basic + DA) × 0.75%)
  *   ESI (joined before)                     = IF(Gross > 21000, 0, Salary earned × 0.75%)
- * Bonus / EL / Gratuity are employer contributions (not part of gross or net); ESI is deducted from net.
+ * Bonus / EL / Gratuity are employer contributions (not part of gross or net); PF and ESI are deducted from net.
  */
 const computeStatutory = ({ basicSalary, allowances, fixedGross, salaryEarned, joiningDate }) => {
   const basicDA = Number(basicSalary) + allowances.filter((a) => isDA(a.name)).reduce((n, a) => n + (Number(a.amount) || 0), 0);
@@ -147,6 +150,7 @@ const computeStatutory = ({ basicSalary, allowances, fixedGross, salaryEarned, j
   return {
     basicDA,
     esiRule,
+    pf: Math.round(basicDA * PF_RATE),
     esi: Math.round(esi),
     contributions: [
       { name: 'Bonus (8.33%)', amount: Math.round(basicDA * 0.0833) },
@@ -168,8 +172,9 @@ const computeSalary = ({ basicSalary = 0, allowances = [], deductions = [], over
     basicSalary, allowances, fixedGross, salaryEarned: Math.max(0, grossSalary - lopDeduction), joiningDate: employee.joiningDate,
   });
 
-  // LOP and ESI are always recalculated, never taken from the form
-  const allDeductions = deductions.filter((d) => d.name && !/^Loss of Pay/.test(d.name) && !ESI_ROW.test(d.name));
+  // LOP, PF and ESI are always recalculated, never taken from the form
+  const allDeductions = deductions.filter((d) => d.name && !/^Loss of Pay/.test(d.name) && !ESI_ROW.test(d.name) && !PF_ROW.test(d.name));
+  if (statutory.pf > 0) allDeductions.push({ name: 'PF (12%)', amount: statutory.pf });
   if (statutory.esi > 0) allDeductions.push({ name: 'ESI (0.75%)', amount: statutory.esi });
   if (lopDeduction > 0) allDeductions.push({ name: `Loss of Pay (${summary.lopDays} day${summary.lopDays === 1 ? '' : 's'})`, amount: lopDeduction });
 
@@ -177,7 +182,7 @@ const computeSalary = ({ basicSalary = 0, allowances = [], deductions = [], over
   return {
     totalAllowances, deductions: allDeductions, totalDeductions, grossSalary,
     netSalary: Math.max(0, grossSalary - totalDeductions), perDaySalary, lopDeduction,
-    esi: statutory.esi, esiRule: statutory.esiRule, basicDA: statutory.basicDA, contributions: statutory.contributions,
+    pf: statutory.pf, esi: statutory.esi, esiRule: statutory.esiRule, basicDA: statutory.basicDA, contributions: statutory.contributions,
   };
 };
 
