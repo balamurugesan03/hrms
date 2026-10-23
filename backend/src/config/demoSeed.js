@@ -89,7 +89,6 @@ const seed = async () => {
     { leaveTypeName: 'Sick Leave', leaveCode: 'SL', totalDays: 10, description: 'For illness' },
     { leaveTypeName: 'Earned Leave', leaveCode: 'EL', totalDays: 15, description: 'Accrued leave', isCarryForward: true },
     { leaveTypeName: 'Loss of Pay', leaveCode: 'LOP', totalDays: 0, description: 'Unpaid leave — deducted from salary', isPaid: false },
-    { leaveTypeName: 'Medical Leave', leaveCode: 'MDL', totalDays: 12, description: 'For illness or medical treatment' },
   ]);
   await Holiday.create([
     ...HOLIDAYS.map(([holidayName, m, d, holidayType]) => ({ holidayName, holidayDate: new Date(curYear, m - 1, d), holidayType })),
